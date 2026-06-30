@@ -5,9 +5,9 @@
     </i></p>
     <img width="256px" src="https://github.com/alxwrd/git-env/raw/main/.github/assets/man-reading-the-mail-768.png">
     <div align="center">
-        <a href="https://github.com/alxwrd/git-env/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/alxwrd/git-env/test.yml?branch=main&label=main"></a>
-        <a href="https://pypi.python.org/pypi/git-env"><img src="https://img.shields.io/pypi/v/git-env.svg"></a>
-        <a href="https://github.com/alxwrd/git-env/blob/main/LICENCE"><img src="https://img.shields.io/pypi/l/git-env.svg?"></a>
+        <a href="https://github.com/alxwrd/git-env/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/alxwrd/git-env/ci.yml?branch=main&label=main"></a>
+        <a href="https://pypi.python.org/pypi/git-env"><img src="https://img.shields.io/pypi/v/git-env"></a>
+        <a href="https://github.com/alxwrd/git-env/blob/main/LICENCE"><img src="https://img.shields.io/pypi/l/git-env"></a>
     </div>
 
 Copies untracked env files to your worktrees.
