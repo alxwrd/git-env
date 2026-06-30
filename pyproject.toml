@@ -1,11 +1,13 @@
 [project]
 name = "git-env"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sync environment files across linked git worktrees"
 readme = "README.md"
 authors = [
     { name = "Alex Ward", email = "alxwrd@googlemail.com" }
 ]
+license = "MIT"
+license-files = ["LICENCE"]
 requires-python = ">=3.10"
 dependencies = [
     "arguably>=1.2.2",
