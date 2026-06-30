@@ -1,6 +1,6 @@
 [project]
 name = "git-env"
-version = "0.2.0"
+version = "0.3.0"
 description = "Sync environment files across linked git worktrees"
 readme = "README.md"
 authors = [

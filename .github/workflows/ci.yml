@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Show environment
+        run: |
+          bash --version | head -1
+          git --version
+
+      - name: Run tests
+        run: uv run pytest
+        env:
+          UV_PYTHON: ${{ matrix.python-version }}
+
+  bash-completions:
+    name: completions / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            bash: /bin/bash
+            label: bash 3.2 (macOS)
+          - os: ubuntu-latest
+            bash: /bin/bash
+            label: bash 5.x (Linux)
+          - os: macos-latest
+            bash: /opt/homebrew/bin/bash
+            install-bash: true
+            label: bash 5.x (macOS)
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install bash 5 via Homebrew
+        if: ${{ matrix.install-bash }}
+        run: brew install bash
+
+      - name: Verify bash version
+        run: ${{ matrix.bash }} --version
+
+      - name: Check completion script syntax
+        run: ${{ matrix.bash }} -n src/git_env/completions/git-env.bash
+
+      - name: Source completion script
+        run: ${{ matrix.bash }} -c 'source src/git_env/completions/git-env.bash && declare -F _git_env'
