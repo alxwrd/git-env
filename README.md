@@ -27,9 +27,8 @@ git env sync                                 # copies .env from the primary
 $ git env sync
 
 copied  .env
-copied  .env.local
 
-2 files synced.
+1 file synced.
 ```
 
 Run it again later to pick up any changes made in the primary. By default,
@@ -114,7 +113,7 @@ precedence (system → global → local → worktree):
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `env.sync.patterns` | multi-value | `.env`, `.env.*` | Globs to sync. Multi-value, so additional `git config --add` calls append rather than replace. |
+| `env.sync.patterns` | multi-value | `.env` | Globs to sync. Multi-value, so additional `git config --add` calls append rather than replace. |
 | `env.sync.exclude` | multi-value | `.env.example`, `.env.sample`, `.env.template` | Patterns never synced, even if they match `patterns` (typically committed templates). |
 | `env.sync.followSymlinks` | bool | `false` | Follow symlinked env files instead of skipping them. |
 | `env.sync.maxFileSize` | int (bytes) | `1048576` | Files larger than this are skipped with a warning. |
@@ -138,7 +137,6 @@ without everyone running `git config`. Same keys as above, minus the
 
 ```
 patterns=.env
-patterns=.env.*
 exclude=.env.example
 followSymlinks=false
 ```

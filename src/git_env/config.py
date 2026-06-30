@@ -9,7 +9,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_PATTERNS = (".env", ".env.*")
+DEFAULT_PATTERNS = (".env",)
 DEFAULT_EXCLUDE = (".env.example", ".env.sample", ".env.template")
 DEFAULT_FOLLOW_SYMLINKS = False
 DEFAULT_MAX_FILE_SIZE = 1048576
