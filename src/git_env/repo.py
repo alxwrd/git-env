@@ -9,6 +9,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+@dataclass(frozen=True)
+class ShellResult:
+    ok: bool
+    out: str
+
+
 class RepoError(Exception):
     """Raised when the current location is not a usable linked worktree.
 
@@ -33,7 +39,7 @@ class Repository:
     """Absolute path to the current (linked) worktree's root directory."""
 
 
-def _git(*args: str, cwd: Path | None = None) -> str:
+def _git(*args: str, cwd: Path | None = None) -> ShellResult:
     try:
         result = subprocess.run(
             ["git", *args],
@@ -43,20 +49,7 @@ def _git(*args: str, cwd: Path | None = None) -> str:
         )
     except FileNotFoundError as exc:
         raise RepoError("git executable not found on PATH") from exc
-    return result.stdout.strip()
-
-
-def _git_ok(*args: str, cwd: Path | None = None) -> tuple[bool, str]:
-    try:
-        result = subprocess.run(
-            ["git", *args],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:
-        raise RepoError("git executable not found on PATH") from exc
-    return result.returncode == 0, result.stdout.strip()
+    return ShellResult(ok=result.returncode == 0, out=result.stdout.strip())
 
 
 def detect_repository(cwd: Path | None = None) -> Repository:
@@ -69,21 +62,21 @@ def detect_repository(cwd: Path | None = None) -> Repository:
     """
     cwd = (cwd or Path.cwd()).resolve()
 
-    inside_ok, inside_out = _git_ok("rev-parse", "--is-inside-work-tree", cwd=cwd)
-    bare_ok, bare_out = _git_ok("rev-parse", "--is-bare-repository", cwd=cwd)
+    inside = _git("rev-parse", "--is-inside-work-tree", cwd=cwd)
+    bare = _git("rev-parse", "--is-bare-repository", cwd=cwd)
 
     # A bare repo has no work tree, so --is-inside-work-tree reports "false" (not
     # an error) even when we *are* inside a git dir. Check bare-ness first so that
     # case gets its own message instead of the generic "not inside a worktree" one.
-    if bare_ok and bare_out == "true":
+    if bare.ok and bare.out == "true":
         raise RepoError("bare repositories are not supported")
 
-    if not inside_ok or inside_out != "true":
+    if not inside.ok or inside.out != "true":
         raise RepoError("not inside a git worktree")
 
-    git_dir = Path(_git("rev-parse", "--path-format=absolute", "--git-dir", cwd=cwd))
+    git_dir = Path(_git("rev-parse", "--path-format=absolute", "--git-dir", cwd=cwd).out)
     git_common_dir = Path(
-        _git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=cwd)
+        _git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=cwd).out
     )
 
     if git_dir.resolve() == git_common_dir.resolve():
@@ -95,7 +88,7 @@ def detect_repository(cwd: Path | None = None) -> Repository:
 
     primary_root = git_common_dir.resolve().parent
     worktree_root = Path(
-        _git("rev-parse", "--path-format=absolute", "--show-toplevel", cwd=cwd)
+        _git("rev-parse", "--path-format=absolute", "--show-toplevel", cwd=cwd).out
     ).resolve()
 
     _check_pwd_within_worktree(worktree_root)

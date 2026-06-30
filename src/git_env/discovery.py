@@ -32,10 +32,6 @@ class DiscoveredFile:
     absolute_path: Path
     """Absolute path to the file (symlink target if followed)."""
 
-    size: int
-
-    is_symlink: bool
-
 
 @dataclass(frozen=True)
 class DiscoveryWarning:
@@ -195,8 +191,6 @@ def discover_env_files(
                 DiscoveredFile(
                     relative_path=rel_path,
                     absolute_path=abs_path,
-                    size=stat_result.st_size,
-                    is_symlink=is_symlink,
                 )
             )
 

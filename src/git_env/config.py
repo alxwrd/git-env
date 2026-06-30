@@ -6,6 +6,7 @@ local -> worktree) handled natively by `git config --get[-all]`.
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -89,7 +90,7 @@ def _parse_envsync_file(path: Path) -> dict[str, list[str]]:
     return values
 
 
-def _parse_bool(value: str, *, source: str) -> bool:
+def _parse_bool(value: str, source: str) -> bool:
     lowered = value.strip().lower()
     if lowered in _TRUE_VALUES:
         return True
@@ -98,7 +99,7 @@ def _parse_bool(value: str, *, source: str) -> bool:
     raise ConfigError(f"invalid boolean value for {source}: {value!r}")
 
 
-def _parse_int(value: str, *, source: str) -> int:
+def _parse_int(value: str, source: str) -> int:
     try:
         return int(value.strip())
     except ValueError as exc:
@@ -116,36 +117,20 @@ def _resolve_multi(
     return list(default)
 
 
-def _resolve_bool(
-    config_key: str, envsync: dict[str, list[str]], envsync_key: str, default: bool, cwd: Path
-) -> bool:
+def _resolve(
+    config_key: str,
+    envsync: dict[str, list[str]],
+    envsync_key: str,
+    default: str | bool | int,
+    cwd: Path,
+    parse: Callable[[str, str], str | bool | int] | None = None,
+) -> str | bool | int:
     value = _git_config_get(config_key, cwd)
     if value is not None:
-        return _parse_bool(value, source=config_key)
+        return parse(value, config_key) if parse else value
     if envsync_key in envsync:
-        return _parse_bool(envsync[envsync_key][-1], source=f".envsync:{envsync_key}")
-    return default
-
-
-def _resolve_int(
-    config_key: str, envsync: dict[str, list[str]], envsync_key: str, default: int, cwd: Path
-) -> int:
-    value = _git_config_get(config_key, cwd)
-    if value is not None:
-        return _parse_int(value, source=config_key)
-    if envsync_key in envsync:
-        return _parse_int(envsync[envsync_key][-1], source=f".envsync:{envsync_key}")
-    return default
-
-
-def _resolve_str(
-    config_key: str, envsync: dict[str, list[str]], envsync_key: str, default: str, cwd: Path
-) -> str:
-    value = _git_config_get(config_key, cwd)
-    if value is not None:
-        return value
-    if envsync_key in envsync:
-        return envsync[envsync_key][-1]
+        raw = envsync[envsync_key][-1]
+        return parse(raw, f".envsync:{envsync_key}") if parse else raw
     return default
 
 
@@ -164,17 +149,13 @@ def load_config(primary_root: Path) -> SyncConfig:
     exclude = _resolve_multi(
         "env.sync.exclude", envsync, "exclude", DEFAULT_EXCLUDE, primary_root
     )
-    follow_symlinks = _resolve_bool(
-        "env.sync.followSymlinks",
-        envsync,
-        "followSymlinks",
-        DEFAULT_FOLLOW_SYMLINKS,
-        primary_root,
+    follow_symlinks = _resolve(
+        "env.sync.followSymlinks", envsync, "followSymlinks", DEFAULT_FOLLOW_SYMLINKS, primary_root, _parse_bool
     )
-    max_file_size = _resolve_int(
-        "env.sync.maxFileSize", envsync, "maxFileSize", DEFAULT_MAX_FILE_SIZE, primary_root
+    max_file_size = _resolve(
+        "env.sync.maxFileSize", envsync, "maxFileSize", DEFAULT_MAX_FILE_SIZE, primary_root, _parse_int
     )
-    on_conflict = _resolve_str(
+    on_conflict = _resolve(
         "env.sync.onConflict", envsync, "onConflict", DEFAULT_ON_CONFLICT, primary_root
     )
     if on_conflict not in VALID_ON_CONFLICT:
@@ -182,15 +163,15 @@ def load_config(primary_root: Path) -> SyncConfig:
             f"invalid env.sync.onConflict value: {on_conflict!r}"
             f" (expected one of {sorted(VALID_ON_CONFLICT)})"
         )
-    backup = _resolve_bool(
-        "env.sync.backup", envsync, "backup", DEFAULT_BACKUP, primary_root
+    backup = _resolve(
+        "env.sync.backup", envsync, "backup", DEFAULT_BACKUP, primary_root, _parse_bool
     )
 
     return SyncConfig(
         patterns=tuple(patterns),
         exclude=tuple(exclude),
-        follow_symlinks=follow_symlinks,
-        max_file_size=max_file_size,
-        on_conflict=on_conflict,
-        backup=backup,
+        follow_symlinks=bool(follow_symlinks),
+        max_file_size=int(max_file_size),  # type: ignore[arg-type]
+        on_conflict=str(on_conflict),
+        backup=bool(backup),
     )

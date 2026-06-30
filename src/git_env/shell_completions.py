@@ -30,15 +30,11 @@ class CompletionTarget:
     enable_snippet: str
 
 
-def _xdg_data_home() -> Path:
-    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
-
-
 def completion_target(shell: str) -> CompletionTarget:
     """Resolve the standard user-level install path and rc snippet for `shell`."""
     home = Path.home()
     if shell == "bash":
-        path = _xdg_data_home() / "bash-completion" / "completions" / "git-env"
+        path = Path(os.environ.get("XDG_DATA_HOME") or home / ".local" / "share") / "bash-completion" / "completions" / "git-env"
         snippet = f'source "{path}"'
     elif shell == "zsh":
         path = home / ".zsh" / "completions" / "_git-env"
