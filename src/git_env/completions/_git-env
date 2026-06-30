@@ -1,0 +1,43 @@
+#compdef git-env
+# Zsh completion for `git env` / `git-env`, following the `_git` plugin
+# convention: a function named `_git-env` is dispatched automatically by
+# zsh's bundled `_git` completion when it sees `git env <TAB>`. Placing this
+# file on $fpath also makes `git-env <TAB>` work when invoked directly.
+
+_git-env() {
+	local curcontext="$curcontext" state line
+	local -a subcommands
+	subcommands=(
+		'sync:copy env files from the primary worktree into the current linked worktree'
+	)
+
+	_arguments -C \
+		'(- *)'{-h,--help}'[show help]' \
+		'(- *)--version[print the version]' \
+		'--install-completions[print a completion snippet for a shell]:shell:(bash zsh fish)' \
+		'--write[write the completion file instead of printing a snippet]' \
+		'1: :->subcommand' \
+		'*::arg:->args'
+
+	case $state in
+		subcommand)
+			_describe -t commands 'git env subcommand' subcommands
+			;;
+		args)
+			case ${words[1]} in
+				sync)
+					_arguments \
+						'(-n --dry-run)'{-n,--dry-run}'[print actions, change nothing]' \
+						'(-f --force)'{-f,--force}'[overwrite local files even when they differ from the primary]' \
+						'(-v --verbose)'{-v,--verbose}'[print every file considered, including skips]' \
+						'(-q --quiet)'{-q,--quiet}'[suppress non-error output]' \
+						'*--pattern[glob to sync, repeatable]:glob' \
+						'--path[restrict to a subdirectory of the worktree]:subdir:_files -/' \
+						'(-h --help)'{-h,--help}'[show help]'
+					;;
+			esac
+			;;
+	esac
+}
+
+_git-env "$@"

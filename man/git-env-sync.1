@@ -1,0 +1,238 @@
+.TH GIT-ENV-SYNC 1 "2026-06-30" "git-env" "Git Manual"
+.SH NAME
+git-env-sync \- copy environment files from the primary worktree into the current linked worktree
+.SH SYNOPSIS
+.B git env sync
+.RB [ -n | --dry-run ]
+.RB [ -f | --force ]
+.RB [ -v | --verbose ]
+.RB [ -q | --quiet ]
+.RB [ --pattern
+.IR glob ]\fR...
+.RB [ --path
+.IR subdir ]
+.SH DESCRIPTION
+.B git env sync
+copies environment files (default:
+.I .env
+and
+.IR .env.* )
+from the
+.B primary worktree
+into the
+.B current linked worktree
+, preserving the relative path of each file and its mode bits (notably the
+executable bit, since some
+.I .envrc
+files are executable). The sync is strictly one-way, primary to linked; a
+hypothetical
+.B git env push
+in the other direction is not implemented.
+.PP
+The primary worktree is the one whose
+.I .git
+is a directory \(em the original clone. The current worktree's
+.I .git
+is a file pointing at
+.IR .git/worktrees/ <name>/
+inside the primary. Git itself is used to find both: see
+.B REPOSITORY DETECTION
+below.
+.PP
+.B git env sync
+must be run from a linked worktree. Running it from the primary worktree,
+from outside any git repository, or from a bare repository all refuse to
+run with exit code 2.
+.SH OPTIONS
+.TP
+.BR -n ", " --dry-run
+Print the actions that would be taken, but change nothing on disk. Exits 0
+if the linked worktree is already up to date, or 1 if changes are pending.
+.TP
+.BR -f ", " --force
+Overwrite local files even when they differ from the primary. Without
+this flag, a differing destination file is a conflict: it is skipped, a
+warning is printed, and the run exits 1 for that file (see
+.B CONFLICT HANDLING
+below). Also bypasses the safety check that refuses to run when the
+primary has uncommitted changes to tracked env files.
+.TP
+.BR -v ", " --verbose
+Print every file considered, including ones that are skipped (already
+in sync, excluded, too large, a symlink, etc).
+.TP
+.BR -q ", " --quiet
+Suppress non-error output. Errors still go to stderr.
+.B --verbose
+and
+.B --quiet
+are mutually exclusive; combining them is a usage error (exit 3).
+.TP
+.BI --pattern\  glob
+Override the configured patterns for this run only. Repeatable; each
+occurrence adds one glob. Does not consult
+.B env.sync.patterns
+or the
+.I .envsync
+file when given.
+.TP
+.BI --path\  subdir
+Restrict the sync to files under
+.I subdir
+of the worktree, instead of the whole worktree.
+.SH "REPOSITORY DETECTION"
+.IP 1. 4
+Run
+.B "git rev-parse --is-inside-work-tree" .
+If false or the command errors, refuse with exit 2: "not inside a git
+worktree".
+.IP 2. 4
+Run
+.B "git rev-parse --is-bare-repository" .
+If true, refuse with exit 2: "bare repositories are not supported".
+.IP 3. 4
+Compare
+.B "git rev-parse --git-dir"
+and
+.B "git rev-parse --git-common-dir" .
+If they resolve to the same path, the current directory
+.B is
+the primary worktree, not a linked one, and the run refuses with exit 2,
+naming the primary's path.
+.IP 4. 4
+The primary worktree root is the parent directory of the common git dir.
+.SH "FILE DISCOVERY"
+The primary worktree is walked, matching files against the configured
+patterns.
+.I .gitignore
+is deliberately
+.B not
+respected, since environment files are typically gitignored \(em that's
+the reason this tool exists. A dedicated
+.I .envsyncignore
+file (gitignore syntax) at the primary root excludes paths regardless of
+pattern matches.
+.PP
+Symlinks are skipped by default; set
+.B env.sync.followSymlinks
+to follow them. Files larger than
+.B env.sync.maxFileSize
+(default 1 MiB) are skipped with a warning, since a large match usually
+means a misconfigured pattern rather than a legitimate env file.
+.PP
+.B Submodules are not traversed.
+Environment files inside a submodule are never synced by this command.
+.SH "COPY SEMANTICS"
+Each file is written to
+.IR <dest>.envsync.tmp
+and then renamed over the real destination, so a sync that is interrupted
+midway never leaves a partially-written env file in place. Mode bits are
+preserved; modification time is not \(em the destination's mtime reflects
+when it was synced, which makes staleness visible. Nothing is ever written
+outside the current worktree root, even if a pattern or a followed
+symlink would otherwise resolve there.
+.SH "CONFLICT HANDLING"
+A conflict is a destination file that already exists and differs from the
+source. Resolution depends on the destination's state and the flags
+given:
+.IP \(bu 2
+Destination does not exist: copied.
+.IP \(bu 2
+Destination is byte-identical to the source: skipped silently.
+.IP \(bu 2
+Destination differs from the source, no
+.BR --force :
+skipped with a warning and a one-line diff summary (e.g. "3 lines
+differ"); the run's exit code becomes 1; the user is told to re-run with
+.B --force
+or resolve the file manually.
+.IP \(bu 2
+Destination differs from the source,
+.B --force
+given: the destination is overwritten unconditionally. If
+.B env.sync.backup
+is true (the default), the previous content is saved to
+.I <dest>.envsync.bak
+first \(em a single backup slot, overwritten on each subsequent forced
+sync, so one mistake is always recoverable but old backups don't pile up.
+.SH "SAFETY RAILS"
+The run refuses (exit 2) if the primary worktree has uncommitted changes
+to
+.B tracked
+files matching the env patterns, unless
+.B --force
+is given. This guards against propagating a half-edited tracked template.
+.PP
+The run also refuses if
+.B $PWD
+is not within the current worktree, as a guard against unusual
+invocations, and never writes outside the current worktree root.
+.SH CONFIGURATION
+Settings are read with
+.BR "git config" ,
+which applies the usual precedence: system, then global, then local, then
+worktree config. Per-repo overrides belong in the primary's
+.IR .git/config ;
+per-worktree overrides in the worktree's own config.
+.PP
+.TS
+tab(:);
+l l l l.
+Key:Type:Default:Meaning
+_
+env.sync.patterns:multi-value:.env, .env.*:Globs to sync; multi-value so values can be appended, not just replaced
+env.sync.exclude:multi-value:.env.example, .env.sample, .env.template:Patterns never synced (committed templates)
+env.sync.followSymlinks:bool:false:Follow symlinks instead of skipping them
+env.sync.maxFileSize:int (bytes):1048576:Files larger than this are skipped with a warning
+env.sync.onConflict:enum:skip:One of skip, overwrite, prompt
+env.sync.backup:bool:true:Whether --force writes a .envsync.bak backup
+.TE
+.PP
+An optional
+.I .envsync
+file at the primary worktree root pins patterns into version control for
+team consistency. It is parsed as
+.I key=value
+lines, using the same keys as above but without the
+.B env.sync.
+prefix; lines starting with
+.B #
+and blank lines are ignored. Git config always takes precedence over
+.I .envsync
+when both set the same key, and
+.I .envsync
+takes precedence over the built-in default.
+.SH "EXIT CODES"
+.TS
+tab(:);
+l l.
+0:success, or dry-run with no changes pending
+1:sync completed but one or more files had conflicts that were skipped
+2:refused to run (in the primary worktree, not a git repo, bare repo, dirty tracked env files)
+3:usage error (bad flag, e.g. --verbose with --quiet)
+4:I/O error while copying a file
+.TE
+.SH EXAMPLES
+.TP
+Preview what a sync would do without changing anything:
+.B git env sync --dry-run
+.TP
+Sync only files under
+.IR apps/web :
+.B git env sync --path apps/web
+.TP
+Force-overwrite local files, keeping a backup of what was there:
+.B git env sync --force
+.TP
+Sync an extra pattern not covered by configuration:
+.B git env sync --pattern '*.env.local'
+.SH LIMITATIONS
+.B git env sync
+does not traverse submodules; environment files inside a submodule are
+never synced, regardless of pattern configuration. The tool assumes a
+single primary worktree per invocation and does not attempt to merge or
+parse env file contents \(em files are copied as opaque bytes.
+.SH "SEE ALSO"
+.BR git-env (1),
+.BR git-worktree (1),
+.BR git-config (1)

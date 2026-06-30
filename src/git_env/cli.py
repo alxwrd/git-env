@@ -17,6 +17,8 @@ import arguably
 from .config import ConfigError, load_config
 from .output import Reporter
 from .repo import RepoError, check_primary_clean, detect_repository
+from .shell_completions import SUPPORTED_SHELLS
+from .shell_completions import install_completions as render_completions_install
 from .sync import SyncIOError, run_sync
 
 #: Names set aside for future official subcommands (see spec.md Extensibility).
@@ -32,12 +34,18 @@ class GitEnvExit(Exception):
 
 
 @arguably.command
-def __root__(*, porcelain: bool = False) -> None:
+def __root__(
+    *, porcelain: bool = False, install_completions: str | None = None, write: bool = False
+) -> None:
     """
     git env: sync environment files across linked git worktrees.
 
     Args:
         porcelain: reserved for a future machine-readable output mode (not yet supported)
+        install_completions: print a completion snippet for [bash|zsh|fish]; combine with
+            --write to install the completion file instead of printing it
+        write: used with --install-completions, write the completion file to its standard
+            location instead of printing a snippet
     """
     if porcelain:
         print(
@@ -45,6 +53,19 @@ def __root__(*, porcelain: bool = False) -> None:
             " supported",
             file=sys.stderr,
         )
+        raise GitEnvExit(3)
+    if install_completions is not None:
+        if install_completions not in SUPPORTED_SHELLS:
+            print(
+                "git env: --install-completions expects one of "
+                f"{', '.join(SUPPORTED_SHELLS)}, got {install_completions!r}",
+                file=sys.stderr,
+            )
+            raise GitEnvExit(3)
+        print(render_completions_install(install_completions, write=write))
+        raise GitEnvExit(0)
+    if write:
+        print("git env: --write requires --install-completions", file=sys.stderr)
         raise GitEnvExit(3)
     if arguably.is_target():
         arguably.error("a subcommand is required, try 'git env --help'")

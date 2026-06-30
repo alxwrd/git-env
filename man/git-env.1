@@ -1,0 +1,97 @@
+.TH GIT-ENV 1 "2026-06-30" "git-env" "Git Manual"
+.SH NAME
+git-env \- sync environment files across linked git worktrees
+.SH SYNOPSIS
+.B git env
+.RI [ --porcelain ]
+.I subcommand
+.RI [ args ...]
+.br
+.B git env --version
+.br
+.B git env --help
+.br
+.B git env help
+.RI [ subcommand ]
+.SH DESCRIPTION
+.B git env
+is a git extension that manages environment files (initially
+.IR .env )
+across linked worktrees created by
+.BR "git worktree add" .
+Environment files are typically gitignored, so they don't follow a worktree
+the way tracked files do; this tool copies them across so a new worktree
+isn't missing the secrets and local config the primary worktree has.
+.PP
+.B git env
+is a thin dispatcher: it resolves
+.B "git env"
+.I subcommand
+to a
+.B git-env-\fIsubcommand\fR
+executable, the same mechanism git itself uses for its own subcommands.
+This keeps the door open for new subcommands, including third-party ones,
+without changing the dispatcher.
+.SH SUBCOMMANDS
+.TP
+.B sync
+Copy environment files from the primary worktree into the current linked
+worktree. See
+.BR git-env-sync (1)
+for the full description of flags, conflict handling, and exit codes.
+.PP
+The following subcommand names are reserved for future official use and
+will refuse to run with a usage error if invoked:
+.BR push ", " diff ", " status ", " list ", " edit ", " check .
+This is so a third-party
+.B git-env-status
+script written today won't silently conflict with an official subcommand
+added later.
+.SH OPTIONS
+.TP
+.B --version
+Print the installed version of
+.BR git-env .
+Only valid before a subcommand, so it cannot clash with a subcommand's own
+.B -v
+/
+.B --verbose
+flag.
+.TP
+.BR --help
+Print short usage and exit.
+.TP
+.B --porcelain
+Reserved for a future machine-readable output mode. Not implemented in
+this version: passing it is a usage error (exit code 3) rather than being
+silently ignored, so scripts don't depend on output that hasn't been
+specified yet.
+.SH "GIT HELP INTEGRATION"
+.B git help env
+opens this manpage via
+.BR man (1),
+which is why the installed filename must be exactly
+.IR git-env.1 .
+.SH "EXIT CODES"
+.TS
+tab(:);
+l l.
+0:success
+1:usage-dependent (see subcommand manpage)
+2:refused to run (not a git worktree, bare repo, or other precondition failure)
+3:usage error (bad flag, unknown or reserved subcommand)
+4:I/O error
+.TE
+.PP
+These codes are part of the command's contract across all subcommands;
+scripts may rely on them.
+.SH LIMITATIONS
+Submodules are not traversed: environment files inside a submodule are
+never synced, and
+.B git-env
+assumes a single primary worktree per invocation. Bare repositories are
+detected and rejected.
+.SH "SEE ALSO"
+.BR git-env-sync (1),
+.BR git (1),
+.BR git-worktree (1)

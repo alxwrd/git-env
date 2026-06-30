@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import difflib
 import filecmp
+import fnmatch
 import os
 import shutil
 from dataclasses import dataclass
@@ -121,6 +122,46 @@ def _atomic_copy(src: Path, dest: Path) -> None:
         raise SyncIOError(f"failed to copy {src} -> {dest}: {exc}") from exc
 
 
+def _cleanup_excluded_in_linked(
+    worktree_root: Path,
+    config: SyncConfig,
+    path: str | None,
+    *,
+    dry_run: bool,
+    reporter: Reporter,
+) -> int:
+    """Remove files from the linked worktree that match include AND exclude patterns.
+
+    Excluded patterns are for committed templates (e.g. .env.example) that git
+    checks out into linked worktrees but that sync should never treat as env files.
+    """
+    root = worktree_root
+    search_root = (root / path) if path else root
+    if not search_root.is_dir():
+        return 0
+
+    count = 0
+    for dirpath, dirnames, filenames in os.walk(search_root):
+        dir_path = Path(dirpath)
+        dirnames[:] = [d for d in dirnames if d != ".git"]
+        for filename in filenames:
+            if not any(fnmatch.fnmatch(filename, p) for p in config.patterns):
+                continue
+            if not any(fnmatch.fnmatch(filename, p) for p in config.exclude):
+                continue
+            abs_path = dir_path / filename
+            if abs_path.is_symlink():
+                continue
+            rel_path = abs_path.relative_to(root)
+            if dry_run:
+                reporter.detail(f"would remove {rel_path} (excluded template)")
+            else:
+                abs_path.unlink()
+                reporter.detail(f"removed {rel_path} (excluded template)")
+            count += 1
+    return count
+
+
 def run_sync(
     repo: Repository,
     config: SyncConfig,
@@ -181,6 +222,12 @@ def run_sync(
 
         conflicts += 1
         reporter.warn(f"{rel}: {diff_desc}, skipping (use --force to overwrite)")
+
+    cleaned = _cleanup_excluded_in_linked(
+        repo.worktree_root, config, path, dry_run=dry_run, reporter=reporter
+    )
+    if dry_run:
+        would_change += cleaned
 
     total_changes = synced + (would_change if dry_run else 0)
     reporter.info(
