@@ -15,14 +15,14 @@ from conftest import GitEnv
 def test_clean_sync(git_env: GitEnv) -> None:
     (git_env.primary / ".env").write_text("FOO=bar\n")
     (git_env.primary / "apps").mkdir()
-    (git_env.primary / "apps" / ".env.local").write_text("BAZ=qux\n")
+    (git_env.primary / "apps" / ".env").write_text("BAZ=qux\n")
     wt = git_env.add_worktree()
 
     result = git_env.sync()
 
     assert result.returncode == 0, result.stderr
     assert (wt / ".env").read_text() == "FOO=bar\n"
-    assert (wt / "apps" / ".env.local").read_text() == "BAZ=qux\n"
+    assert (wt / "apps" / ".env").read_text() == "BAZ=qux\n"
     assert "synced .env" in result.stdout
 
 
@@ -117,17 +117,17 @@ def test_refuses_to_run_outside_repo(git_env: GitEnv, tmp_path: Path) -> None:
 def test_symlink_skipped_by_default_and_followed_when_configured(git_env: GitEnv) -> None:
     target = git_env.primary / "real-secrets"
     target.write_text("FOO=symlinked\n")
-    (git_env.primary / ".env.link").symlink_to(target)
+    (git_env.primary / ".env").symlink_to(target)
     wt = git_env.add_worktree()
 
     result = git_env.sync()
     assert result.returncode == 0, result.stderr
-    assert not (wt / ".env.link").exists()
+    assert not (wt / ".env").exists()
 
     git_env.git("config", "env.sync.followSymlinks", "true")
     result = git_env.sync()
     assert result.returncode == 0, result.stderr
-    assert (wt / ".env.link").read_text() == "FOO=symlinked\n"
+    assert (wt / ".env").read_text() == "FOO=symlinked\n"
 
 
 def test_large_file_skipped_with_warning(git_env: GitEnv) -> None:
