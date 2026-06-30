@@ -48,12 +48,6 @@ class SyncResult:
         return 0
 
 
-def _filter_path(files: list[DiscoveredFile], path: str | None) -> list[DiscoveredFile]:
-    if path is None:
-        return files
-    prefix = Path(path)
-    return [f for f in files if prefix in (f.relative_path, *f.relative_path.parents)]
-
 
 def _resolve_dest(worktree_root: Path, relative_path: Path) -> Path:
     """Resolve `relative_path` against `worktree_root`, refusing escapes.
@@ -173,7 +167,9 @@ def run_sync(
 ) -> SyncResult:
     """Sync env files from `repo.primary_root` into `repo.worktree_root`."""
     files, warnings = discover_env_files(repo.primary_root, config)
-    files = _filter_path(files, path)
+    if path is not None:
+        prefix = Path(path)
+        files = [f for f in files if prefix in (f.relative_path, *f.relative_path.parents)]
 
     for warning in warnings:
         reporter.warn(f"{warning.relative_path}: {warning.message}")

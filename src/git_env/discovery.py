@@ -102,10 +102,6 @@ class _IgnoreMatcher:
                 ignored = not negate
         return ignored
 
-    @property
-    def empty(self) -> bool:
-        return not self._rules
-
 
 def _load_ignore_matcher(primary_root: Path) -> _IgnoreMatcher:
     ignore_file = primary_root / ".envsyncignore"
@@ -148,7 +144,7 @@ def discover_env_files(
                 continue
             if child.is_symlink() and not config.follow_symlinks:
                 continue
-            if not ignore.empty and ignore.matches(rel_child_posix, is_dir=True):
+            if ignore.matches(rel_child_posix, is_dir=True):
                 continue
             kept_dirnames.append(dirname)
         dirnames[:] = kept_dirnames
@@ -162,7 +158,7 @@ def discover_env_files(
                 continue
             if _matches_any(filename, config.exclude):
                 continue
-            if not ignore.empty and ignore.matches(rel_posix, is_dir=False):
+            if ignore.matches(rel_posix, is_dir=False):
                 continue
 
             is_symlink = abs_path.is_symlink()
