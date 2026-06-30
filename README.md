@@ -1,7 +1,7 @@
 <div align="center">
     <h1><code>git-env</code></h1>
     <p align="center"><i>
-        Environment file syncronisation to your linked git worktrees
+        Copies untracked env files to your worktrees
     </i></p>
     <img width="256px" src="https://github.com/alxwrd/git-env/raw/main/.github/assets/man-reading-the-mail-768.png">
     <div align="center">
@@ -9,8 +9,6 @@
         <a href="https://pypi.python.org/pypi/git-env"><img src="https://img.shields.io/pypi/v/git-env"></a>
         <a href="https://github.com/alxwrd/git-env/blob/main/LICENCE"><img src="https://img.shields.io/pypi/l/git-env"></a>
     </div>
-
-Copies untracked env files to your worktrees.
 </div>
 
 
@@ -25,10 +23,8 @@ git env sync                                 # copies .env from the primary
 
 ```plain
 $ git env sync
-
-copied  .env
-
-1 file synced.
+synced  .env
+2 files synced, 0 unchanged, 0 conflicts skipped
 ```
 
 Run it again later to pick up any changes made in the primary. By default,
