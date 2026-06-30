@@ -1,0 +1,24 @@
+[project]
+name = "git-env"
+version = "0.1.0"
+description = "Sync environment files across linked git worktrees"
+readme = "README.md"
+authors = [
+    { name = "Alex Ward", email = "alxwrd@googlemail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "arguably>=1.2.2",
+]
+
+[project.scripts]
+git-env = "git_env:main"
+
+[build-system]
+requires = ["uv_build>=0.10.0,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
