@@ -17,10 +17,10 @@ Copies untracked env files to your worktrees.
 ## Example
 
 ```sh
-cd ~/repos/myproject                       # primary worktree, has .env
-git worktree add ~/worktrees/myproject-feature      # create a linked worktree
-cd ~/worktrees/myproject-feature
-git env sync                               # copies .env from the primary
+cd ~/repos/myproject                         # primary worktree, has .env
+git worktree add ~/worktrees/my-feature      # create a linked worktree
+cd ~/worktrees/my-feature
+git env sync                                 # copies .env from the primary
 ```
 
 ```plain
